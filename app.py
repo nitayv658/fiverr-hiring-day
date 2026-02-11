@@ -3,6 +3,7 @@ from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
 import os
 from dotenv import load_dotenv
+from sqlalchemy import text
 
 load_dotenv()
 
@@ -32,7 +33,7 @@ class Message(db.Model):
 def health():
     try:
         # Test database connection
-        db.session.execute('SELECT 1')
+        db.session.execute(text('SELECT 1'))
         return jsonify({
             'status': 'healthy',
             'message': 'API and database connection working!',
