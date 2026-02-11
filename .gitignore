@@ -6,3 +6,6 @@ __pycache__/
 .DS_Store
 .vscode/
 .idea/
+setup_aws.sh
+*.key
+*.pem
