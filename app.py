@@ -1,7 +1,6 @@
 import os
 import string
 import random
-import threading
 import time
 from datetime import datetime, timezone
 from flask import Flask, jsonify, request, redirect
@@ -294,13 +293,14 @@ def redirect_link(short_code):
         link.click_count += 1
         db.session.commit()
         
-        # Process reward asynchronously (non-blocking)
-        reward_thread = threading.Thread(
-            target=process_reward_async,
-            args=(click.id, link.seller_id, link.id, 0.05)
-        )
-        reward_thread.daemon = True
-        reward_thread.start()
+        # Enqueue reward processing to Celery (non-blocking). Import locally
+        # to avoid circular imports when modules are imported at test collection.
+        try:
+            from tasks import process_reward_task
+            process_reward_task.delay(click.id, link.seller_id, link.id, 0.05)
+        except Exception:
+            # Fallback: process inline if Celery isn't available or import fails
+            process_reward_async(click.id, link.seller_id, link.id, 0.05)
         
         # Return redirect immediately (before reward completes)
         return redirect(link.original_url, code=302)
