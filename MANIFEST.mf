@@ -1,0 +1,33 @@
+Manifest-Version: 1.0
+Implementation-Title: Fiverr Hiring Day API
+Implementation-Version: 0.1.0
+Created-By: nitayv658
+Built-By: nitayv658
+Build-Python: 3.x
+Vcs-Ref: interview-assignment
+Description: Shareable Links API (Flask + PostgreSQL) with async reward pipeline
+Included-Files: README.md, app.py, requirements.txt, test_api.py, celery_app.py, tasks.py, .env.example
+Notes: This manifest is informational for packaging and CI workflows. Adjust values as needed.
+
+
+Gemini conversation link: https://gemini.google.com/share/ca57bc08d206
+
+Interview-Setup: |
+	Prereqs: Python 3.8+, PostgreSQL 12+, (optional) Redis for Celery.
+	Env: copy .env.example -> .env and set `DATABASE_URL` and optional
+			 `BEDROCK_BEARER_TOKEN`, `BEDROCK_CREDIT_URL`, `CELERY_BROKER_URL`.
+	Quick commands:
+		- python3 -m venv venv && source venv/bin/activate
+		- pip install -r requirements.txt
+		- createdb fiverr_test  # or run Postgres via Docker
+		- python app.py         # starts API (creates tables)
+		- export UNIT_TEST=1 && pytest test_api.py -q  # fast test stub
+	Notes: Celery worker optional; tests use a synchronous stub when
+				 `UNIT_TEST=1` for fast local runs.
+
+
+
+SQL is the right call because the data is inherently relational (links → clicks → rewards).
+you need transactional guarantees for payments,
+the query patterns include ordering, pagination, and aggregation, and the scale is moderate. 
+If this grew to billions of clicks, you might move the clicks table to something like DynamoDB (high volume, simple lookups by link_id) while keeping links and rewards in Postgres — a hybrid approach many production systems use.
