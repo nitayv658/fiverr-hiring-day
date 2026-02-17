@@ -76,34 +76,12 @@ The API will be available at `http://localhost:5000`
 GET /health
 ```
 Response: Database connection status
-
-### Hello World
+### Useful Endpoints
 ```
-GET /
-```
-Response: `{"message": "Hello World! Fiverr Hiring Day API"}`
-
-### Create Message
-```
-POST /messages
-Content-Type: application/json
-
-{"text": "Your message here"}
-```
-
-### Get All Messages
-```
-GET /messages
-```
-
-### Get Specific Message
-```
-GET /messages/<id>
-```
-
-### Delete Message
-```
-DELETE /messages/<id>
+GET /health           # health + DB connectivity
+POST /link            # create or reuse a short link
+GET /link/<short>     # redirect + record click + enqueue reward
+GET /state            # analytics (paginated)
 ```
 
 ## Testing with cURL or Postman
@@ -112,16 +90,13 @@ DELETE /messages/<id>
 # Test health check
 curl http://localhost:5000/health
 
-# Test hello world
-curl http://localhost:5000/
-
-# Create a message
-curl -X POST http://localhost:5000/messages \
+# Create a short link
+curl -X POST http://localhost:5000/link \
   -H "Content-Type: application/json" \
-  -d '{"text": "Hello Fiverr!"}'
+  -d '{"seller_id":"seller_abc","original_url":"https://fiverr.com/test-gig"}'
 
-# Get all messages
-curl http://localhost:5000/messages
+# Trigger redirect (no follow)
+curl -vL http://localhost:5000/link/YOUR_SHORT_CODE
 ```
 
 ## Project Structure
@@ -260,4 +235,76 @@ Run these to ensure your API doesn't crash on bad input:
 ### Testing Tip: The "Race Condition"
 
 Your code uses `process_reward_async`. If you check the `/state` endpoint **immediately** (within milliseconds) after clicking, the `credits_earned` might still be `0.00` because the background thread hasn't finished. This is normal behavior for asynchronous systems!
+
+---
+
+## Interview Setup & Quick Start
+
+This project implements the Fiverr Shareable Links API (Flask + PostgreSQL) with an async reward pipeline that can call AWS Bedrock to credit sellers. These steps mirror the instructions used during the interview.
+
+Prerequisites
+- Python 3.8+ (create a virtual environment)
+- PostgreSQL 12+ or Docker
+- Redis (for Celery) if you plan to run the worker
+
+1) Create & activate virtualenv
+```bash
+python3 -m venv venv
+source venv/bin/activate
+```
+
+2) Install dependencies
+```bash
+pip install -r requirements.txt
+```
+
+3) Configure environment
+- Copy `.env.example` to `.env` and set `DATABASE_URL`.
+- If you will use AWS Bedrock for credits, set these env vars:
+  - `BEDROCK_BEARER_TOKEN` — Bedrock bearer token
+  - `BEDROCK_CREDIT_URL` — Bedrock endpoint to call for credit
+  - `CELERY_BROKER_URL` — e.g. `redis://localhost:6379/0` (optional)
+
+4) Prepare the database (local Postgres example)
+```bash
+# create DB (macOS/Homebrew path shown earlier)
+createdb fiverr_test
+# optional: create user and grant privileges
+psql -d fiverr_test -c "CREATE USER \"user\" WITH PASSWORD 'password';"
+psql -d fiverr_test -c "GRANT ALL PRIVILEGES ON DATABASE fiverr_test TO \"user\";"
+```
+
+5) Run the application (creates tables automatically)
+```bash
+python app.py
+```
+
+6) (Optional) Start Redis for Celery
+```bash
+# Docker
+docker run -d --name redis -p 6379:6379 redis:7
+# OR macOS brew
+brew install redis && brew services start redis
+```
+
+7) Start the Celery worker (optional; tests will run with a fast stub)
+```bash
+export UNIT_TEST=0
+celery -A celery_app.celery worker --loglevel=info
+```
+
+8) Run tests
+- Fast unit tests with synchronous Celery stub:
+```bash
+export UNIT_TEST=1
+pytest test_api.py -q
+```
+
+9) Useful endpoints
+- `GET /health` — health + DB connectivity
+- `POST /link` — create/reuse short link
+- `GET /link/<short_code>` — redirect + enqueue reward
+- `GET /state` — analytics (paginated)
+
+If you'd like, I can also add a `docker-compose.yml` to run Postgres+Redis+API for reproducible local testing.
 
