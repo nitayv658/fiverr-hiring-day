@@ -28,17 +28,22 @@ curl http://localhost:5000/
 
 ---
 
-## 🔑 AWS Setup (When They Give You Key)
+## 🔑 AWS Setup — ALREADY CONFIGURED ✅
 
-### In Terminal Window with API Running:
+### Load Bedrock Credentials:
 ```bash
-# They'll give you credentials. Set them:
-export AWS_BEARER_TOKEN_BEDROCK="<paste-key-here>"
-export CLAUDE_CODE_USE_BEDROCK=1
-export AWS_REGION=us-east-1
+source aws_credentials.sh
 
-# Verify it's set:
+# Or manually:
+export AWS_BEARER_TOKEN_BEDROCK="bedrock-api-key-..."
+export CLAUDE_CODE_USE_BEDROCK=1
+export AWS_REGION=eu-west-1
+```
+
+### Verify it's set:
+```bash
 echo $AWS_BEARER_TOKEN_BEDROCK
+echo $AWS_REGION
 ```
 
 ### In VS Code:
