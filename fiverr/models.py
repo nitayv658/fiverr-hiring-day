@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+from flask import current_app
 from fiverr import db
 
 
@@ -24,7 +25,7 @@ class Link(db.Model):
             'seller_id': self.seller_id,
             'original_url': self.original_url,
             'short_code': self.short_code,
-            'short_url': f'http://localhost:5000/link/{self.short_code}',
+            'short_url': f'{current_app.config["BASE_URL"]}/link/{self.short_code}',
             'click_count': self.click_count,
             'credits_earned': float(self.credits_earned),
             'created_at': self.created_at.isoformat(),

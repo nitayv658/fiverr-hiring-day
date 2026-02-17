@@ -1,13 +1,11 @@
-import string
-import random
+import secrets
 from fiverr.models import Link
 
 
-def generate_short_code(length=8):
-    """Generate unique alphanumeric short code."""
-    chars = string.ascii_letters + string.digits
+def generate_short_code(length=6):
+    """Generate a cryptographically secure unique short code."""
     while True:
-        code = ''.join(random.choice(chars) for _ in range(length))
+        code = secrets.token_urlsafe(length)[:8]
         if not Link.query.filter_by(short_code=code).first():
             return code
 

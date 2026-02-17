@@ -1,3 +1,5 @@
+import logging
+
 from flask import Flask, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from dotenv import load_dotenv
@@ -5,6 +7,27 @@ from dotenv import load_dotenv
 load_dotenv()
 
 db = SQLAlchemy()
+logger = logging.getLogger(__name__)
+
+
+def _init_redis(app):
+    """Create a Redis client and store it on the app.
+
+    Returns None (and logs a warning) when Redis is unavailable so the
+    application degrades gracefully to DB-only lookups.
+    """
+    try:
+        import redis
+        client = redis.Redis.from_url(
+            app.config.get('REDIS_URL', 'redis://localhost:6379/0'),
+            decode_responses=True,
+            socket_connect_timeout=1,
+        )
+        client.ping()
+        return client
+    except Exception as exc:
+        logger.warning("Redis unavailable, caching disabled: %s", exc)
+        return None
 
 
 def create_app(config_overrides=None):
@@ -25,6 +48,9 @@ def create_app(config_overrides=None):
         app.config.update(config_overrides)
 
     db.init_app(app)
+
+    # Initialise Redis (graceful degradation if unavailable).
+    app.extensions['redis'] = _init_redis(app)
 
     # Register blueprint — imported lazily to avoid circular imports.
     from fiverr.routes import api_bp
