@@ -149,12 +149,12 @@ def process_reward_async(click_id, seller_id, link_id, amount):
             db.session.add(reward)
 
             # Update click reward status
-            click = Click.query.get(click_id)
+            click = db.session.get(Click, click_id)
             if click:
                 click.reward_status = remote_status
 
             # Update link credits only on completed
-            link = Link.query.get(link_id)
+            link = db.session.get(Link, link_id)
             if link and remote_status == 'completed':
                 link.credits_earned = float(link.credits_earned) + float(amount)
 
