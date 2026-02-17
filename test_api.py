@@ -409,5 +409,88 @@ class TestErrorHandling:
         # Flask will return 400 Bad Request or 500 for malformed JSON
         assert response.status_code in [400, 415, 500]
 
+class TestRewards:
+    """Tests for the asynchronous reward processing system"""
+
+    def test_reward_processed_async(self, client):
+        """A click should eventually credit the seller asynchronously"""
+        payload = {
+            'seller_id': 'reward_seller',
+            'original_url': 'https://fiverr.com/gigs/reward-test'
+        }
+        create_response = client.post('/link',
+            data=json.dumps(payload),
+            content_type='application/json'
+        )
+        data = json.loads(create_response.data)
+        short_code = data['link']['short_code']
+
+        # Trigger a redirect which spawns async reward processing
+        resp = client.get(f'/link/{short_code}', follow_redirects=False)
+        assert resp.status_code == 302
+
+        # Wait briefly for background processing to complete
+        time.sleep(0.25)
+
+        # Verify analytics updated with credits
+        state_resp = client.get('/state')
+        state_data = json.loads(state_resp.data)
+        assert len(state_data['data']) == 1
+        link_data = state_data['data'][0]
+        assert link_data['click_count'] == 1
+        assert float(link_data['credits_earned']) == pytest.approx(0.05, rel=1e-3)
+
+    def test_multiple_clicks_aggregate_credits(self, client):
+        """Multiple clicks should sum credits correctly"""
+        payload = {
+            'seller_id': 'reward_seller_multi',
+            'original_url': 'https://fiverr.com/gigs/reward-multi'
+        }
+        create_response = client.post('/link',
+            data=json.dumps(payload),
+            content_type='application/json'
+        )
+        data = json.loads(create_response.data)
+        short_code = data['link']['short_code']
+
+        # Trigger 3 redirects
+        for _ in range(3):
+            client.get(f'/link/{short_code}', follow_redirects=False)
+            time.sleep(0.05)
+
+        time.sleep(0.3)
+
+        state_resp = client.get('/state')
+        state_data = json.loads(state_resp.data)
+        link_data = state_data['data'][0]
+        assert link_data['click_count'] == 3
+        assert float(link_data['credits_earned']) == pytest.approx(0.15, rel=1e-3)
+
+    def test_reward_record_created_in_db(self, client):
+        """A Reward row should be created in the DB after a click"""
+        payload = {
+            'seller_id': 'reward_seller_db',
+            'original_url': 'https://fiverr.com/gigs/reward-db'
+        }
+        create_response = client.post('/link',
+            data=json.dumps(payload),
+            content_type='application/json'
+        )
+        data = json.loads(create_response.data)
+        short_code = data['link']['short_code']
+
+        client.get(f'/link/{short_code}', follow_redirects=False)
+        time.sleep(0.25)
+
+        with app.app_context():
+            rewards = Reward.query.all()
+            assert len(rewards) >= 1
+            # Find a reward for our link
+            found = False
+            for r in rewards:
+                if r.amount is not None and float(r.amount) == pytest.approx(0.05, rel=1e-3):
+                    found = True
+                    assert r.status in ('pending', 'completed', 'success', 'processed')
+            assert found
 if __name__ == '__main__':
     pytest.main([__file__, '-v', '--tb=short'])
