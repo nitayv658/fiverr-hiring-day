@@ -102,11 +102,21 @@ curl -vL http://localhost:5000/link/YOUR_SHORT_CODE
 ## Project Structure
 ```
 Fiverr-project/
-├── app.py                 # Main Flask application
+├── app.py                 # Backward-compat entry point (re-exports app, db, models)
+├── fiverr/                # Application package
+│   ├── __init__.py        # Application factory (create_app) & SQLAlchemy db instance
+│   ├── config.py          # Configuration classes
+│   ├── models.py          # Link, Click, Reward models
+│   ├── routes.py          # Flask Blueprint with all API routes
+│   └── utils.py           # Utility helpers (short code generation, IP extraction)
+├── tasks.py               # Celery task for async reward processing
+├── celery_app.py          # Celery factory with synchronous test stub
+├── test_api.py            # pytest test suite (27 tests)
 ├── requirements.txt       # Python dependencies
-├── .env.example          # Environment variables template
-├── .gitignore            # Git ignore file
-└── README.md             # This file
+├── schema.sql             # Reference SQL schema
+├── .env.example           # Environment variables template
+├── .gitignore             # Git ignore file
+└── README.md              # This file
 ```
 
 ## Notes
@@ -234,7 +244,7 @@ Run these to ensure your API doesn't crash on bad input:
 
 ### Testing Tip: The "Race Condition"
 
-Your code uses `process_reward_async`. If you check the `/state` endpoint **immediately** (within milliseconds) after clicking, the `credits_earned` might still be `0.00` because the background thread hasn't finished. This is normal behavior for asynchronous systems!
+Reward processing runs asynchronously via Celery (or synchronously through a stub during tests). If you check the `/state` endpoint **immediately** (within milliseconds) after clicking, the `credits_earned` might still be `0.00` because the background task hasn't finished. This is normal behavior for asynchronous systems!
 
 ---
 

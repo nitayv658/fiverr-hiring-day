@@ -24,3 +24,10 @@ Interview-Setup: |
 		- export UNIT_TEST=1 && pytest test_api.py -q  # fast test stub
 	Notes: Celery worker optional; tests use a synchronous stub when
 				 `UNIT_TEST=1` for fast local runs.
+
+
+
+SQL is the right call because the data is inherently relational (links → clicks → rewards).
+you need transactional guarantees for payments,
+the query patterns include ordering, pagination, and aggregation, and the scale is moderate. 
+If this grew to billions of clicks, you might move the clicks table to something like DynamoDB (high volume, simple lookups by link_id) while keeping links and rewards in Postgres — a hybrid approach many production systems use.
